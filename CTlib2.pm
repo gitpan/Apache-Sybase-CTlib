@@ -1,8 +1,9 @@
-package Apache::Sybase::CTlib;
+package Apache::Sybase::CTlib2;
 
 use strict;
-use Apache ();
-use Apache::Log ();
+use Apache2;
+use mod_perl;
+use Apache::RequestUtil;
 use Sybase::CTlib;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
 
@@ -10,22 +11,25 @@ require Exporter;
 
 @ISA = qw(Exporter);
 @EXPORT = qw();
-$VERSION = '1.02';
+$VERSION = '2.00';
 
 my(%Connected);
 my @ChildConnect;
 my $r=shift;
+my $aref;
  
-sub connect_on_init { push @ChildConnect, [@_] }
-if(Apache->can_stack_handlers) {
-   Apache->push_handlers(PerlChildInitHandler => sub {
-      for my $aref (@ChildConnect) {
-         shift @$aref;
-         Apache::Sybase::CTlib->connect(@$aref);
-      }
-   });
+sub connect_on_init { 
+   Apache->server->push_handlers(PerlChildInitHandler => \&childinit);
+   push @ChildConnect, [@_]; 
 }
- 
+
+sub childinit {
+   for my $aref (@ChildConnect) {
+      shift @$aref;
+      Apache::Sybase::CTlib2->connect(@$aref);
+   }
+}
+
 sub connect {
    my($self, @args) = @_;
    my($uid, $pwd, $srv, $db) = @args;
@@ -33,14 +37,14 @@ sub connect {
    return $Connected{$idx} if $Connected{$idx};
    $Connected{$idx} = Sybase::CTlib->ct_connect($uid, $pwd, $srv);
    if (! $Connected{$idx}){
-      Apache->server->log->error("Failed connection to $srv");
+      Apache->server->log_error("Failed connection to $srv");
       return undef;
    }
    else {
       if ($db ne "") {
          $Connected{$idx}->ct_sql("use $db");
       }
-      Apache->server->log->notice("Establishing connection to $srv:$db");
+      Apache->server->log_notice("Establishing connection to $srv:$db");
    }
 }
  
@@ -56,13 +60,13 @@ __END__
 
 =head1 NAME
 
-Apache::Sybase::CTlib - Perl extension for creating persistant database connections to sybase using Apache and Sybperl.
+Apache::Sybase::CTlib2 - Perl extension for creating persistant database connections to sybase using Apache and Sybperl.
 
 =head1 SYNOPSIS
 
-use Apache::Sybase::CTlib;
+use Apache::Sybase::CTlib2;
 
-Apache::Sybase::CTlib->connect_on_init("user", "password", "server", "db");
+Apache::Sybase::CTlib2->connect_on_init("user", "password", "server", "db");
 
 =head1 DESCRIPTION
 
@@ -76,15 +80,15 @@ PerlRequire /apache/startup.pl
 
 In /apache/startup.pl
 
-use Apache::Sybase::CTlib;
+use Apache::Sybase::CTlib2;
 
-Apache::Sybase::CTlib->connect_on_init("user", "password", "server", "db");
+Apache::Sybase::CTlib2->connect_on_init("user", "password", "server", "db");
 
 Passing db (database name) to the module will allow you to specify a database to start in (the module will execute "use database" after the connection is established). This is an optional parameter.
 
 =head1 AUTHOR
 
-Mark A. Downing, mdowning@rdatasys.com
+Mark A. Downing, mdowning@wm7d.net
 http://www.wm7d.net/
 
 =head1 SEE ALSO

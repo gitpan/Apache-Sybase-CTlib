@@ -14,7 +14,24 @@ if ($@) {
     $missing_modules++;
     print <<EOT;
 $@
-The Sybase::CTlib module is required...
+SybPerl is required...
+ 
+EOT
+    sleep(2);  
+} else {
+    print " ok\n";
+}
+
+print "Checking for ModPerl...";
+eval {
+    use Apache2 ();
+};
+if ($@) {
+    print " failed\n";
+    $missing_modules++;
+    print <<EOT;
+$@
+ModPerl2 is required...
  
 EOT
     sleep(2);  
@@ -23,6 +40,6 @@ EOT
 }
 
 WriteMakefile(
-    'NAME'	=> 'Apache::Sybase::CTlib',
-    'VERSION_FROM' => 'CTlib.pm', # finds $VERSION
+    'NAME'	=> 'Apache::Sybase::CTlib2',
+    'VERSION_FROM' => 'CTlib2.pm', # finds $VERSION
 );
