@@ -10,7 +10,7 @@ require Exporter;
 
 @ISA = qw(Exporter);
 @EXPORT = qw();
-$VERSION = '1.01';
+$VERSION = '1.02';
 
 my(%Connected);
 my @ChildConnect;
@@ -28,16 +28,19 @@ if(Apache->can_stack_handlers) {
  
 sub connect {
    my($self, @args) = @_;
-   my($uid, $pwd, $srv) = @args;
+   my($uid, $pwd, $srv, $db) = @args;
    my $idx = join ":", (@args) || (@{$self});
    return $Connected{$idx} if $Connected{$idx};
    $Connected{$idx} = Sybase::CTlib->ct_connect($uid, $pwd, $srv);
-   return undef if ! $Connected{$idx};
-   if ($Connected{$idx}) {
-      Apache->server->log->notice("Starting database connection to $srv");
+   if (! $Connected{$idx}){
+      Apache->server->log->error("Failed connection to $srv");
+      return undef;
    }
    else {
-      Apache->server->log->error("Failed connection to $srv");
+      if ($db ne "") {
+         $Connected{$idx}->ct_sql("use $db");
+      }
+      Apache->server->log->notice("Establishing connection to $srv:$db");
    }
 }
  
@@ -59,7 +62,7 @@ Apache::Sybase::CTlib - Perl extension for creating persistant database connecti
 
 use Apache::Sybase::CTlib;
 
-Apache::Sybase::CTlib->connect_on_init("user", "password", "server");
+Apache::Sybase::CTlib->connect_on_init("user", "password", "server", "db");
 
 =head1 DESCRIPTION
 
@@ -75,9 +78,9 @@ In /apache/startup.pl
 
 use Apache::Sybase::CTlib;
 
-Apache::Sybase::CTlib->connect_on_init("user", "password", "server");
+Apache::Sybase::CTlib->connect_on_init("user", "password", "server", "db");
 
-If you want to have that user start in a specific database, be sure to set the defdb in syslogins.
+Passing db (database name) to the module will allow you to specify a database to start in (the module will execute "use database" after the connection is established). This is an optional parameter.
 
 =head1 AUTHOR
 
